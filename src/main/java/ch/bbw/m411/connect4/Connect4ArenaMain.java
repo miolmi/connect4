@@ -1,23 +1,23 @@
 package ch.bbw.m411.connect4;
 
+import ch.bbw.m411.connect4.players.GreedyPlayer;
+import ch.bbw.m411.connect4.players.HumanPlayer;
+import ch.bbw.m411.connect4.players.SmartPlayer;
+
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Scanner;
+
+import static ch.bbw.m411.connect4.Const.*;
 
 /**
  * Plays a game of Connect Four on a 4x7 board (a variation of the original 6x7 board).
  * The pieces fall straight down, occupying the lowest available space within the column.
  */
 public class Connect4ArenaMain {
-
-	static final int WIDTH = 7;
-
-	static final int HEIGHT = 4;
-
-	static final int NOMOVE = -1;
-
 	public static void main(String[] args) {
-		new Connect4ArenaMain().play(new HumanPlayer(), new GreedyPlayer());
+		// choose which players should play against each other
+		new Connect4ArenaMain().play(new HumanPlayer(), new SmartPlayer());
 	}
 
 	static String toDebugString(Stone[] board) {
@@ -61,50 +61,158 @@ public class Connect4ArenaMain {
 		return null; // null implies a draw
 	}
 
-	boolean isWinning(Stone[] board, Stone forColor) {
-		// TODO: provide an implementation
-		throw new IllegalStateException("Not implemented yet");
-	}
-
-	public enum Stone {
-		RED, BLUE;
-
-		public Stone opponent() {
-			return this == RED ? BLUE : RED;
+	static boolean isWinning(Stone[] board, Stone forColor) {
+		// checks for vertical lines
+		for (int i = 0; i <= 6; i++) {
+			if (board[i] == forColor && board[i + 7] == forColor && board[i + (7 * 2)] == forColor && board[i + (7 * 3)] == forColor) {
+				return true;
+			}
 		}
+		// checks for horizontal lines
+		for (int i = 0; i < 28; i += 7) {
+			for (int x = 0; x < 4; x++) {
+				if (board[x + i] == forColor && board[(x + 1) + i] == forColor && board[(x + 2) + i] == forColor && board[(x + 3) + i] == forColor) {
+					return true;
+				}
+			}
+		}
+		// checks for diagonal / lines
+		for (int i = 0; i < 4; i++) {
+			if (board[i] == forColor && board[i + 8] == forColor && board[i + 16] == forColor && board[i + 24] == forColor) {
+				return true;
+			}
+		}
+		// checks for diagonal \ lines
+		for (int i = 6; i > 2; i--) {
+			if (board[i] == forColor && board[i + 6] == forColor && board[i + 12] == forColor && board[i + 18] == forColor) {
+				return true;
+			}
+		}
+		return false;
 	}
 
-	public interface Connect4Player {
+	public static long minimax(Stone currentPosition, int depth, int freeFields, Stone[] board) {
+		// looks if somebody won
+		if (isWinning(board, currentPosition.opponent())) {
+			return -1000;
+		}
+		// looks if board is full
+		if (freeFields == 0) {
+			return 0;
+		}
+		// evaluates risk for the next play
+		if (depth == 0) {
+			var myCounter = evaluate(board, currentPosition);
+			var opponentCounter = evaluate(board, currentPosition.opponent());
 
-		/**
-		 * Called before the game starts and guaranteed to only be called once per livetime of the player.
-		 *
-		 * @param board the starting board, usually an empty board.
-		 * @param colorToPlay the color of this player
-		 */
-		void initialize(Stone[] board, Stone colorToPlay);
+			return myCounter - opponentCounter;
+		}
 
-		/**
-		 * Perform a next move, will only be called if the Game is not over yet.
-		 * Each player has to keep an internal state of the 4x7 board, wher the 0-index is on the bottom row.
-		 * The index-layout looks as:
-		 * <pre>
-		 * 30 31 32 33 34 35 36
-		 * 14 15 16 17 18 19 29
-		 *  7  8  9 10 11 12 13
-		 *  0  1  2  3  4  5  6
-		 * </pre>
-		 *
-		 * @param opponendPlayed the last index where the opponent played to (in range 0 - width*height exclusive)
-		 * or -1 if this is the first move.
-		 * @return an index to play to (in range 0 - width*height exclusive)
-		 */
-		int play(int opponendPlayed);
+		long bestValue = -100000;
+
+		// goes only though playable fields
+		for (var i : getPlayableMoves(board)) {
+
+			board[i] = currentPosition; // play a stone
+			var currentValue = -minimax(currentPosition.opponent(), depth - 1, freeFields - 1, board);
+			board[i] = null; // revert the last move
+			if (depth == MAXDEPTH) {
+				System.out.println(currentValue + " pos:" + i);
+			}
+			if (currentValue > bestValue) {
+				bestValue = currentValue;
+				if (depth == MAXDEPTH) {
+					BESTMOVE = i; // a bit of a hack: we have to return a position (not a score)
+				}
+			}
+		}
+		return bestValue;
 	}
 
-	/**
+	private static int evaluate(Stone[] board, Stone myColor) {
+		var counterValue = 0;
+		var counter = 0;
+
+		for (var stone : board) {
+			counter++;
+			if (stone == myColor) {
+				// low risk
+				if (counter == 0 || counter == 7 || counter == 14 || counter == 21 ||
+						counter == 6 || counter == 13 || counter == 20 || counter == 27) {
+					counterValue += 3;
+				}
+				// mid risk
+				if (counter == 1 || counter == 8 || counter == 15 || counter == 22 ||
+						counter == 5 || counter == 12 || counter == 19 || counter == 26) {
+					counterValue += 4;
+				}
+				// high risk
+				if (counter == 2 || counter == 9 || counter == 16 || counter == 23 ||
+						counter == 4 || counter == 11 || counter == 18 || counter == 25) {
+					counterValue += 5;
+				}
+				// no chance risk
+				if (counter == 3 || counter == 10 || counter == 17 || counter == 24) {
+					counterValue += 7;
+				}
+			}
+		}
+		return counterValue;
+	}
+
+
+	public static int[] getPlayableMoves(Stone[] board) {
+		//a list with the size of 7
+		var possiblePlays = new int[7];
+
+		//the next possible playable field
+		var nextPossibleField = 0;
+
+
+		for (int i = 0; i < board.length; i++) {
+			//checks if the board is full, so it just continues
+			if (nextPossibleField > 6) {
+				continue;
+			}
+			if (i <= 6) {
+				if (board[i] == null) {
+					possiblePlays[nextPossibleField] = i;
+					nextPossibleField++;
+				}
+			}
+
+			if (i > 6) {
+				//checks if the position i is playable
+				if (board[i] == null) {
+					//checks under the position i,
+					//if a stone is present
+					if (board[i - 7] != null) {
+						possiblePlays[nextPossibleField] = i;
+						nextPossibleField++;
+					}
+				}
+			}
+		}
+
+		return possiblePlays;
+	}
+}
+
+
+
+
+
+
+/*
+
+		int play(int opponentPlayed);
+	}
+
+	*/
+/**
 	 * An abstract helper class to keep track of a board (and whatever we or the opponent played).
-	 */
+	 *//*
+
 	public abstract static class DefaultPlayer implements Connect4Player {
 
 		Stone[] board;
@@ -118,19 +226,21 @@ public class Connect4ArenaMain {
 		}
 
 		@Override
-		public int play(int opponendPlayed) {
-			if (opponendPlayed != NOMOVE) {
-				board[opponendPlayed] = myColor.opponent();
+		public int play(int opponentPlayed) {
+			if (opponentPlayed != NOMOVE) {
+				board[opponentPlayed] = myColor.opponent();
 			}
 			var playTo = play();
 			board[playTo] = myColor;
 			return playTo;
 		}
 
-		/**
+		*/
+/**
 		 * Givent the current {@link #board}, find a suitable position-index to play to.
 		 * @return the position to play to as defined by {@link Connect4Player#play(int)}.
-		 */
+		 *//*
+
 		abstract int play();
 
 	}
@@ -170,6 +280,7 @@ public class Connect4ArenaMain {
 
 	}
 
+
 	public static class GreedyPlayer extends DefaultPlayer {
 
 		@Override
@@ -186,4 +297,4 @@ public class Connect4ArenaMain {
 		}
 	}
 
-}
+*/

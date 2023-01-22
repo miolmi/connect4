@@ -2,6 +2,7 @@ package ch.bbw.m411.connect4;
 
 import java.util.List;
 
+import ch.bbw.m411.connect4.players.GreedyPlayer;
 import org.assertj.core.api.AbstractBooleanAssert;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
@@ -12,21 +13,28 @@ class Connect4MainTest implements WithAssertions {
 		return new Connect4ArenaMain();
 	}
 
-	Connect4ArenaMain.Stone[] fromString(String boardStr) {
+	Stone[] fromString(String boardStr) {
 		var board = boardStr.codePoints()
 				.map(Character::toLowerCase)
 				.filter(x -> List.of('x', 'o', '.')
 						.contains((char) x))
-				.mapToObj(x -> x == 'x' ? Connect4ArenaMain.Stone.RED : (x == 'o' ? Connect4ArenaMain.Stone.BLUE : null))
-				.toArray(Connect4ArenaMain.Stone[]::new);
-		assertThat(board).hasSize(Connect4ArenaMain.WIDTH * Connect4ArenaMain.HEIGHT);
+				.mapToObj(x -> x == 'x' ? Stone.RED : (x == 'o' ? Stone.BLUE : null))
+				.toArray(Stone[]::new);
+		assertThat(board).hasSize(Const.WIDTH * Const.HEIGHT);
 		return board;
 	}
 
 	AbstractBooleanAssert<?> assertThatXWin(String boardStr) {
 		var board = fromString(boardStr);
-		return assertThat(newInstance().isWinning(board, Connect4ArenaMain.Stone.RED)).as(Connect4ArenaMain.toDebugString(board));
+		return assertThat(newInstance().isWinning(board, Stone.RED)).as(Connect4ArenaMain.toDebugString(board));
 	}
+
+/*	@Test
+	void alphBetaShouldFinish() {
+		var red = new Connect4AlphaBetaPlayer(3);
+		var blue = new Connect4AlphaBetaPlayer(10);
+		assertThat(() -> newInstance().play(red, blue)).
+	}*/
 
 	@Test
 	void isWin() {
@@ -57,8 +65,8 @@ class Connect4MainTest implements WithAssertions {
 
 	@Test
 	void inAGreedyBattleTheFirstPlayerWillWin() {
-		var red = new Connect4ArenaMain.GreedyPlayer();
-		var blue = new Connect4ArenaMain.GreedyPlayer();
+		var red = new GreedyPlayer();
+		var blue = new GreedyPlayer();
 		assertThat(newInstance().play(red, blue)).isSameAs(red);
 	}
 }
