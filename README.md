@@ -13,3 +13,12 @@ A start of a project implementing a variant of the game "Connect Four".
 - https://de.wikipedia.org/wiki/Minimax-Algorithmus#Implementierung
 - https://de.wikipedia.org/wiki/Alpha-Beta-Suche#Implementierung
 - https://en.wikipedia.org/wiki/Zobrist_hashing
+
+---
+
+# Fazit
+
+Ich hatte einen relativ guten Einstieg in das Thema und verstand das meiste schnell.
+Bei der Umsetzung im connect4 Projekt stosste ich jedoch ziemlich schnell auf Probleme, was dazu führte,
+Dass ich in Verzug kam. Im Projekt konnte ich nur die Minimum requirements erfüllen.
+Es ist aber eine anständige Polymorphie vorhanden
